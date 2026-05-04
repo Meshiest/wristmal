@@ -3,9 +3,26 @@ const ROW_HEIGHT = 44;
 const PADDING = 10;
 const ANIM_DURATION = 250;
 const BOUNCE = 8;
-const HIGHLIGHT = { r: 0x00, g: 0x1a, b: 0x3a };
 
 let animState = null;
+let cachedColors = null;
+
+function initColors(poco, colors) {
+  if (cachedColors) return cachedColors;
+  cachedColors = {
+    black: colors.black,
+    white: colors.white,
+    gray: colors.gray,
+    darkGray: colors.darkGray,
+    gold: colors.gold,
+    font: colors.font,
+    fontSmall: colors.fontSmall,
+    highlight: poco.makeColor(0x00, 0x22, 0x44),
+    dimTitle: poco.makeColor(160, 160, 160),
+    subText: poco.makeColor(200, 200, 200),
+  };
+  return cachedColors;
+}
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
@@ -13,24 +30,22 @@ function lerp(a, b, t) {
 
 function wobble(fraction, from, to, overshoot) {
   const f = Math.quadEaseOut(fraction) * 4;
-  if (f < 3) {
-    return lerp(from, overshoot, f / 3);
-  }
+  if (f < 3) return lerp(from, overshoot, f / 3);
   return lerp(overshoot, to, f - 3);
 }
 
 export function render(poco, state, colors) {
-  const { black, white, gray, darkGray, blue, gold, font, fontSmall } = colors;
+  const c = initColors(poco, colors);
   poco.begin();
-  poco.fillRectangle(black, 0, 0, poco.width, poco.height);
+  poco.fillRectangle(c.black, 0, 0, poco.width, poco.height);
 
   if (state.animeList.length === 0) {
     const msg = state.loading ? "Loading..." : "No shows watching";
-    const w = poco.getTextWidth(msg, font);
-    poco.drawText(msg, font, gray, (poco.width - w) >> 1, (poco.height - font.height) >> 1);
+    const w = poco.getTextWidth(msg, c.font);
+    poco.drawText(msg, c.font, c.gray, (poco.width - w) >> 1, (poco.height - c.font.height) >> 1);
     if (state.error) {
-      const ew = poco.getTextWidth(state.error, fontSmall);
-      poco.drawText(state.error, fontSmall, gold,
+      const ew = poco.getTextWidth(state.error, c.fontSmall);
+      poco.drawText(state.error, c.fontSmall, c.gold,
         (poco.width - ew) >> 1, (poco.height >> 1) + 30);
     }
     poco.end();
@@ -52,25 +67,48 @@ export function render(poco, state, colors) {
     if (progress >= 1) animState = null;
   }
 
-  const centerY = restCenterY + offsetY;
+  const centerY = restCenterY + Math.round(offsetY);
 
-  const highlightColor = poco.makeColor(HIGHLIGHT.r, HIGHLIGHT.g, HIGHLIGHT.b);
-  poco.fillRectangle(highlightColor, inset, centerY, contentWidth, SELECTED_HEIGHT);
-  drawRow(poco, list[sel], true, inset, centerY, contentWidth, SELECTED_HEIGHT, colors);
+  poco.fillRectangle(c.highlight, inset, centerY, contentWidth, SELECTED_HEIGHT);
+  drawSelectedRow(poco, list[sel], inset, centerY, contentWidth, c);
 
   let y = centerY - ROW_HEIGHT;
   for (let i = sel - 1; i >= 0 && y + ROW_HEIGHT > 0; i--) {
-    drawRow(poco, list[i], false, inset, y, contentWidth, ROW_HEIGHT, colors);
+    drawUnselectedRow(poco, list[i], inset, y, contentWidth, c);
     y -= ROW_HEIGHT;
   }
 
   y = centerY + SELECTED_HEIGHT;
   for (let i = sel + 1; i < list.length && y < poco.height; i++) {
-    drawRow(poco, list[i], false, inset, y, contentWidth, ROW_HEIGHT, colors);
+    drawUnselectedRow(poco, list[i], inset, y, contentWidth, c);
     y += ROW_HEIGHT;
   }
 
   poco.end();
+}
+
+function drawSelectedRow(poco, anime, x, y, w, c) {
+  const maxW = w - PADDING * 2;
+  const title = truncate(poco, anime.t, c.font, maxW);
+  poco.drawText(title, c.font, c.white, x + PADDING, y + 6);
+
+  const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
+  const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
+
+  if (scoreStr) {
+    poco.drawText(scoreStr, c.font, c.gold, x + PADDING, y + 6 + c.font.height);
+  }
+  const epW = poco.getTextWidth(ep, c.font);
+  poco.drawText(ep, c.font, c.subText, x + w - epW - PADDING, y + 6 + c.font.height);
+}
+
+function drawUnselectedRow(poco, anime, x, y, w, c) {
+  const title = truncate(poco, anime.t, c.fontSmall, w - PADDING * 2);
+  poco.drawText(title, c.fontSmall, c.dimTitle, x + PADDING, y + 4);
+
+  const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
+  const epW = poco.getTextWidth(ep, c.fontSmall);
+  poco.drawText(ep, c.fontSmall, c.darkGray, x + w - epW - PADDING, y + 4 + c.fontSmall.height + 1);
 }
 
 function truncate(poco, text, font, maxWidth) {
@@ -81,33 +119,9 @@ function truncate(poco, text, font, maxWidth) {
   return text + "…";
 }
 
-function drawRow(poco, anime, selected, x, y, w, h, colors) {
-  const { black, white, gray, darkGray, gold, font, fontSmall } = colors;
-  const titleColor = selected ? white : poco.makeColor(160, 160, 160);
-  const subColor = selected ? poco.makeColor(200, 200, 200) : darkGray;
-
-  const title = truncate(poco, anime.t, selected ? font : fontSmall, w - PADDING * 2);
-
-  if (selected) {
-    poco.drawText(title, font, titleColor, x + PADDING, y + 6);
-
-    const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
-    const ep = anime.total > 0 ? `EP ${anime.ep}/${anime.total}` : `EP ${anime.ep}/?`;
-
-    if (scoreStr) {
-      poco.drawText(scoreStr, font, gold, x + PADDING, y + 6 + font.height);
-    }
-    const epW = poco.getTextWidth(ep, font);
-    poco.drawText(ep, font, subColor, x + w - epW - PADDING, y + 6 + font.height);
-  } else {
-    poco.drawText(title, fontSmall, titleColor, x + PADDING, y + 4);
-    const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
-    const epW = poco.getTextWidth(ep, fontSmall);
-    poco.drawText(ep, fontSmall, darkGray, x + w - epW - PADDING, y + 4 + fontSmall.height + 1);
-  }
-}
-
 let animTimer = null;
+let _poco = null;
+let _colors = null;
 
 function startAnim(direction, poco, state, colors) {
   const shift = direction > 0 ? ROW_HEIGHT : -ROW_HEIGHT;
@@ -129,9 +143,6 @@ function startAnim(direction, poco, state, colors) {
   }, 33);
 }
 
-let _poco = null;
-let _colors = null;
-
 export function handleButton(type, event, state, actions) {
   if (event !== "press" && event !== "double") return;
 
@@ -146,25 +157,18 @@ export function handleButton(type, event, state, actions) {
   if (type === "up" && event === "press") {
     if (state.selectedIndex > 0) {
       state.selectedIndex--;
-      if (_poco && _colors) {
-        startAnim(-1, _poco, state, _colors);
-      } else {
-        actions.redraw();
-      }
+      if (_poco) startAnim(-1, _poco, state, _colors);
+      else actions.redraw();
     }
   } else if (type === "down" && event === "press") {
     if (state.selectedIndex < list.length - 1) {
       state.selectedIndex++;
-      if (_poco && _colors) {
-        startAnim(1, _poco, state, _colors);
-      } else {
-        actions.redraw();
-      }
+      if (_poco) startAnim(1, _poco, state, _colors);
+      else actions.redraw();
     }
   } else if (type === "select" && event === "press") {
     if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
-    const anime = list[state.selectedIndex];
-    actions.pushScreen("editMenu", { anime });
+    actions.pushScreen("editMenu", { anime: list[state.selectedIndex] });
   } else if (type === "select" && event === "double") {
     if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
     const anime = list[state.selectedIndex];
