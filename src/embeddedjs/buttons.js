@@ -15,6 +15,7 @@ class ButtonManager {
     this._longPressTimer = null;
     this._holdTimers = {};
     this._lastPress = {};
+    this._btnDown = {};
     this._captureBack = false;
     this._initButton();
   }
@@ -35,27 +36,28 @@ class ButtonManager {
   }
 
   _onPush(down, type) {
+    const wasDown = this._btnDown[type] || false;
+    this._btnDown[type] = down;
+
     if (type === "select") {
+      if (down === wasDown) return;
       this._onSelect(down);
       return;
     }
 
     if (type === "back") {
-      if (down) this._callback("back", "press");
+      if (down && !wasDown) this._callback("back", "press");
       return;
     }
 
-    if (down) {
-      const now = Date.now();
-      if (now - (this._lastPress[type] || 0) < DEBOUNCE_MS) return;
-      this._lastPress[type] = now;
+    if (down && !wasDown) {
       this._callback(type, "press");
       this._holdTimers[type] = setTimeout(() => {
         this._holdTimers[type] = setInterval(() => {
           this._callback(type, "repeat");
         }, HOLD_REPEAT_INTERVAL);
       }, HOLD_REPEAT_DELAY);
-    } else {
+    } else if (!down && wasDown) {
       clearTimeout(this._holdTimers[type]);
       clearInterval(this._holdTimers[type]);
       delete this._holdTimers[type];
