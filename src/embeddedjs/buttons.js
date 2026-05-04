@@ -1,0 +1,62 @@
+import Button from "pebble/button";
+
+const DOUBLE_TAP_WINDOW = 300;
+const HOLD_REPEAT_DELAY = 400;
+const HOLD_REPEAT_INTERVAL = 150;
+
+class ButtonManager {
+  constructor(callback) {
+    this._callback = callback;
+    this._selectCount = 0;
+    this._selectTimer = null;
+    this._holdTimers = {};
+
+    new Button({
+      types: ["select", "up", "down", "back"],
+      onPush: (down, type) => this._onPush(down, type),
+    });
+  }
+
+  _onPush(down, type) {
+    if (type === "select") {
+      this._onSelect(down);
+      return;
+    }
+
+    if (type === "back") {
+      if (down) this._callback("back", "press");
+      return;
+    }
+
+    if (down) {
+      this._callback(type, "press");
+      this._holdTimers[type] = setTimeout(() => {
+        this._holdTimers[type] = setInterval(() => {
+          this._callback(type, "repeat");
+        }, HOLD_REPEAT_INTERVAL);
+      }, HOLD_REPEAT_DELAY);
+    } else {
+      clearTimeout(this._holdTimers[type]);
+      clearInterval(this._holdTimers[type]);
+      delete this._holdTimers[type];
+    }
+  }
+
+  _onSelect(down) {
+    if (!down) return;
+
+    this._selectCount++;
+    if (this._selectCount === 1) {
+      this._selectTimer = setTimeout(() => {
+        this._selectCount = 0;
+        this._callback("select", "press");
+      }, DOUBLE_TAP_WINDOW);
+    } else if (this._selectCount >= 2) {
+      clearTimeout(this._selectTimer);
+      this._selectCount = 0;
+      this._callback("select", "double");
+    }
+  }
+}
+
+export default ButtonManager;

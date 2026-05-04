@@ -1,0 +1,30 @@
+{
+  "name": "wristmal",
+  "author": "cake",
+  "version": "0.1.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Wristmal",
+    "uuid": "93c0db50-815d-4461-870f-4ee23d6e851b",
+    "projectType": "moddable",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": ["emery", "gabbro"],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "COMMAND",
+      "ANIME_ID",
+      "VALUE",
+      "LIST_DATA",
+      "STATUS",
+      "ERROR_MSG"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}
