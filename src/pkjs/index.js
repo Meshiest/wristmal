@@ -280,7 +280,7 @@ Pebble.addEventListener('showConfiguration', function () {
   var clientId = localStorage.getItem(CLIENT_ID_KEY) || '';
   var token = getToken();
   var loggedIn = token && !isTokenExpired();
-  var configUrl = 'https://meshiest.github.io/wristmal/index.html' +
+  var configUrl = 'https://www.reheatedcake.io/wristmal/index.html' +
     '?client_id=' + encodeURIComponent(clientId) +
     '&logged_in=' + (loggedIn ? '1' : '0');
   Pebble.openURL(configUrl);

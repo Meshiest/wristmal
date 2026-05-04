@@ -15,6 +15,7 @@
     "watchapp": {
       "watchface": false
     },
+    "capabilities": ["configurable"],
     "messageKeys": [
       "COMMAND",
       "ANIME_ID",
