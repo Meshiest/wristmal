@@ -15,7 +15,6 @@
   button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1em;
            cursor: pointer; margin-top: 16px; }
   .btn-login { background: #2e86de; color: #fff; }
-  .btn-save { background: #10ac84; color: #fff; }
   .status { text-align: center; padding: 12px; color: #10ac84; }
 </style>
 </head>
@@ -27,16 +26,12 @@
   <input id="clientId" placeholder="From myanimelist.net/apiconfig">
   <label>MAL Client Secret</label>
   <input id="clientSecret" type="password" placeholder="From myanimelist.net/apiconfig">
-  <button class="btn-save" onclick="saveCredentials()">Save Credentials</button>
-</div>
-
-<div id="auth" class="card" style="display:none;">
-  <button class="btn-login" onclick="startLogin()">Log in to MyAnimeList</button>
+  <button class="btn-login" onclick="saveAndLogin()">Save & Log in to MyAnimeList</button>
 </div>
 
 <div id="loggedIn" class="card" style="display:none;">
   <div class="status">Logged in to MyAnimeList</div>
-  <button class="btn-login" onclick="startLogin()">Re-authenticate</button>
+  <button class="btn-login" onclick="saveAndLogin()">Re-authenticate</button>
 </div>
 
 <div id="callback" class="card" style="display:none;">
@@ -51,29 +46,27 @@ var authCode = params.get('code');
 
 document.getElementById('clientId').value = clientId;
 
-if (authCode && clientId) {
+if (authCode) {
+  clientId = sessionStorage.getItem('client_id') || clientId;
   document.getElementById('setup').style.display = 'none';
   document.getElementById('callback').style.display = 'block';
   exchangeCode(authCode);
 } else if (clientId && isLoggedIn) {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('loggedIn').style.display = 'block';
-} else if (clientId) {
-  document.getElementById('setup').style.display = 'none';
-  document.getElementById('auth').style.display = 'block';
 }
 
-function saveCredentials() {
+function saveAndLogin() {
   clientId = document.getElementById('clientId').value.trim();
   var clientSecret = document.getElementById('clientSecret').value.trim();
   if (!clientId) { alert('Client ID is required'); return; }
-  closeConfig({ client_id: clientId, client_secret: clientSecret });
-}
 
-function startLogin() {
+  sessionStorage.setItem('client_id', clientId);
+  sessionStorage.setItem('client_secret', clientSecret);
+
   var codeVerifier = generateCodeVerifier();
   sessionStorage.setItem('code_verifier', codeVerifier);
-  sessionStorage.setItem('client_secret', document.getElementById('clientSecret').value || '');
+
   var redirectUri = location.origin + location.pathname;
   var url = 'https://myanimelist.net/v1/oauth2/authorize' +
     '?response_type=code' +
@@ -106,15 +99,20 @@ function exchangeCode(code) {
     if (data.access_token) {
       closeConfig({
         client_id: clientId,
+        client_secret: clientSecret,
         access_token: data.access_token,
         refresh_token: data.refresh_token,
         expires_in: data.expires_in,
       });
     } else {
-      alert('Auth failed: ' + JSON.stringify(data));
+      document.getElementById('callback').innerHTML =
+        '<div class="status" style="color:#e74c3c;">Auth failed: ' + (data.error || data.message || JSON.stringify(data)) + '</div>';
     }
   })
-  .catch(function(e) { alert('Error: ' + e); });
+  .catch(function(e) {
+    document.getElementById('callback').innerHTML =
+      '<div class="status" style="color:#e74c3c;">Error: ' + e + '</div>';
+  });
 }
 
 function generateCodeVerifier() {
