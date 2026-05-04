@@ -179,10 +179,18 @@ function startAnim(direction, poco, state, colors) {
     const elapsed = Date.now() - animState.startTime;
     const progress = Math.min(1, elapsed / ANIM_DURATION);
 
-    const textOff = ease(progress, animState.fromOffset);
-    const hlOff = Math.round(wobble(progress, animState.fromOffset, animState.overshoot));
+    const eased = Math.quadEaseOut(progress);
+    const f = eased * 4;
 
-    renderFrame(poco, state, c, textOff, hlOff);
+    if (f < 3) {
+      // Slide phase: text and highlight move together
+      const offset = Math.round(lerp(animState.fromOffset, 0, f / 3));
+      renderFrame(poco, state, c, offset, offset);
+    } else {
+      // Bounce phase: text at rest, only highlight bounces
+      const hlOff = Math.round(lerp(animState.overshoot, 0, f - 3));
+      renderFrame(poco, state, c, 0, hlOff);
+    }
 
     if (progress >= 1) animState = null;
   }, 33);
