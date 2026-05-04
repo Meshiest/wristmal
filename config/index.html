@@ -35,7 +35,7 @@
 </div>
 
 <div id="callback" class="card" style="display:none;">
-  <div class="status">Exchanging token...</div>
+  <div class="status">Completing login...</div>
 </div>
 
 <script>
@@ -47,10 +47,9 @@ var authCode = params.get('code');
 document.getElementById('clientId').value = clientId;
 
 if (authCode) {
-  clientId = sessionStorage.getItem('client_id') || clientId;
   document.getElementById('setup').style.display = 'none';
   document.getElementById('callback').style.display = 'block';
-  exchangeCode(authCode);
+  returnAuthCode(authCode);
 } else if (clientId && isLoggedIn) {
   document.getElementById('setup').style.display = 'none';
   document.getElementById('loggedIn').style.display = 'block';
@@ -77,41 +76,18 @@ function saveAndLogin() {
   location.href = url;
 }
 
-function exchangeCode(code) {
-  var codeVerifier = sessionStorage.getItem('code_verifier');
+function returnAuthCode(code) {
+  var codeVerifier = sessionStorage.getItem('code_verifier') || '';
   var clientSecret = sessionStorage.getItem('client_secret') || '';
+  clientId = sessionStorage.getItem('client_id') || clientId;
   var redirectUri = location.origin + location.pathname;
 
-  var body = 'client_id=' + encodeURIComponent(clientId) +
-    '&client_secret=' + encodeURIComponent(clientSecret) +
-    '&grant_type=authorization_code' +
-    '&code=' + encodeURIComponent(code) +
-    '&code_verifier=' + encodeURIComponent(codeVerifier) +
-    '&redirect_uri=' + encodeURIComponent(redirectUri);
-
-  fetch('https://myanimelist.net/v1/oauth2/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body,
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.access_token) {
-      closeConfig({
-        client_id: clientId,
-        client_secret: clientSecret,
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expires_in: data.expires_in,
-      });
-    } else {
-      document.getElementById('callback').innerHTML =
-        '<div class="status" style="color:#e74c3c;">Auth failed: ' + (data.error || data.message || JSON.stringify(data)) + '</div>';
-    }
-  })
-  .catch(function(e) {
-    document.getElementById('callback').innerHTML =
-      '<div class="status" style="color:#e74c3c;">Error: ' + e + '</div>';
+  closeConfig({
+    client_id: clientId,
+    client_secret: clientSecret,
+    auth_code: code,
+    code_verifier: codeVerifier,
+    redirect_uri: redirectUri,
   });
 }
 

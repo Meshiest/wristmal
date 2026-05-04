@@ -63,6 +63,34 @@ function refreshToken(callback) {
   xhr.send(body);
 }
 
+function exchangeAuthCode(code, codeVerifier, redirectUri) {
+  var clientId = localStorage.getItem(CLIENT_ID_KEY);
+  var clientSecret = localStorage.getItem(CLIENT_SECRET_KEY) || '';
+
+  var body = 'client_id=' + encodeURIComponent(clientId) +
+    '&client_secret=' + encodeURIComponent(clientSecret) +
+    '&grant_type=authorization_code' +
+    '&code=' + encodeURIComponent(code) +
+    '&code_verifier=' + encodeURIComponent(codeVerifier) +
+    '&redirect_uri=' + encodeURIComponent(redirectUri);
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', 'https://myanimelist.net/v1/oauth2/token');
+  xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  xhr.onload = function () {
+    if (xhr.status === 200) {
+      var data = JSON.parse(xhr.responseText);
+      saveTokens(data);
+      fetchList();
+    } else {
+      console.log('Token exchange failed: ' + xhr.status + ' ' + xhr.responseText);
+      sendError('Login failed');
+    }
+  };
+  xhr.onerror = function () { sendError('Token exchange network error'); };
+  xhr.send(body);
+}
+
 function ensureToken(callback) {
   var token = getToken();
   if (!token) {
@@ -292,8 +320,13 @@ Pebble.addEventListener('webviewclosed', function (e) {
     var data = JSON.parse(decodeURIComponent(e.response));
     if (data.client_id) localStorage.setItem(CLIENT_ID_KEY, data.client_id);
     if (data.client_secret) localStorage.setItem(CLIENT_SECRET_KEY, data.client_secret);
-    if (data.access_token) saveTokens(data);
-    fetchList();
+
+    if (data.auth_code) {
+      exchangeAuthCode(data.auth_code, data.code_verifier, data.redirect_uri);
+    } else if (data.access_token) {
+      saveTokens(data);
+      fetchList();
+    }
   } catch (err) {
     console.log('Config parse error: ' + err);
   }
