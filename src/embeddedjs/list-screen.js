@@ -38,9 +38,9 @@ export function render(poco, state, colors) {
   const c = initColors(poco, colors);
   invalidateCache(state);
   poco.begin();
-  poco.fillRectangle(c.black, 0, 0, poco.width, poco.height);
 
   if (state.animeList.length === 0) {
+    poco.fillRectangle(c.black, 0, 0, poco.width, poco.height);
     const msg = state.loading ? "Loading..." : "No shows watching";
     const w = poco.getTextWidth(msg, c.font);
     poco.drawText(msg, c.font, c.gray, (poco.width - w) >> 1, (poco.height - c.font.height) >> 1);
@@ -70,7 +70,16 @@ export function render(poco, state, colors) {
 
   const centerY = restCenterY + Math.round(offsetY);
 
-  poco.fillRectangle(c.highlight, inset, centerY, contentWidth, SELECTED_HEIGHT);
+  // Fill black above the selected row
+  if (centerY > 0)
+    poco.fillRectangle(c.black, 0, 0, poco.width, centerY);
+  // Fill highlight for selected row
+  poco.fillRectangle(c.highlight, 0, centerY, poco.width, SELECTED_HEIGHT);
+  // Fill black below the selected row
+  const belowY = centerY + SELECTED_HEIGHT;
+  if (belowY < poco.height)
+    poco.fillRectangle(c.black, 0, belowY, poco.width, poco.height - belowY);
+
   drawSelectedRow(poco, list[sel], inset, centerY, contentWidth, c);
 
   let y = centerY - ROW_HEIGHT;
@@ -161,7 +170,7 @@ function startAnim(direction, poco, state, colors) {
 }
 
 export function handleButton(type, event, state, actions) {
-  if (event !== "press" && event !== "double") return;
+  if (event !== "press" && event !== "double" && event !== "long") return;
 
   const list = state.animeList;
   if (list.length === 0) return;
@@ -186,7 +195,7 @@ export function handleButton(type, event, state, actions) {
   } else if (type === "select" && event === "press") {
     if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
     actions.pushScreen("editMenu", { anime: list[state.selectedIndex] });
-  } else if (type === "select" && event === "double") {
+  } else if (type === "select" && (event === "double" || event === "long")) {
     if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
     const anime = list[state.selectedIndex];
     if (anime.total > 0 && anime.ep + 1 >= anime.total) {
