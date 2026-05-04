@@ -70,29 +70,41 @@ export function render(poco, state, colors) {
 
   const centerY = restCenterY + Math.round(offsetY);
 
-  // Fill black above the selected row
-  if (centerY > 0)
-    poco.fillRectangle(c.black, 0, 0, poco.width, centerY);
-  // Fill highlight for selected row
-  poco.fillRectangle(c.highlight, 0, centerY, poco.width, SELECTED_HEIGHT);
-  // Fill black below the selected row
-  const belowY = centerY + SELECTED_HEIGHT;
-  if (belowY < poco.height)
-    poco.fillRectangle(c.black, 0, belowY, poco.width, poco.height - belowY);
-
-  drawSelectedRow(poco, list[sel], inset, centerY, contentWidth, c);
-
-  let y = centerY - ROW_HEIGHT;
-  for (let i = sel - 1; i >= 0 && y + ROW_HEIGHT > 0; i--) {
-    drawUnselectedRow(poco, list[i], inset, y, contentWidth, c);
-    y -= ROW_HEIGHT;
+  // Count how many rows fit above
+  let aboveCount = 0;
+  for (let i = sel - 1; i >= 0; i--) {
+    const ry = centerY - (sel - i) * ROW_HEIGHT;
+    if (ry + ROW_HEIGHT <= 0) break;
+    aboveCount = sel - i;
   }
 
-  y = centerY + SELECTED_HEIGHT;
+  // Top black fill
+  const firstRowY = centerY - aboveCount * ROW_HEIGHT;
+  if (firstRowY > 0)
+    poco.fillRectangle(c.black, 0, 0, poco.width, firstRowY);
+
+  // Draw above rows top-to-bottom
+  for (let n = aboveCount; n >= 1; n--) {
+    const ry = centerY - n * ROW_HEIGHT;
+    poco.fillRectangle(c.black, 0, ry, poco.width, ROW_HEIGHT);
+    drawUnselectedRow(poco, list[sel - n], inset, ry, contentWidth, c);
+  }
+
+  // Selected row
+  poco.fillRectangle(c.highlight, 0, centerY, poco.width, SELECTED_HEIGHT);
+  drawSelectedRow(poco, list[sel], inset, centerY, contentWidth, c);
+
+  // Below rows
+  let y = centerY + SELECTED_HEIGHT;
   for (let i = sel + 1; i < list.length && y < poco.height; i++) {
+    poco.fillRectangle(c.black, 0, y, poco.width, ROW_HEIGHT);
     drawUnselectedRow(poco, list[i], inset, y, contentWidth, c);
     y += ROW_HEIGHT;
   }
+
+  // Bottom black fill
+  if (y < poco.height)
+    poco.fillRectangle(c.black, 0, y, poco.width, poco.height - y);
 
   poco.end();
 }
