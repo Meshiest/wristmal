@@ -28,6 +28,7 @@ const state = {
   animeList: [],
   loading: true,
   error: null,
+  updating: false,
 };
 
 const screens = {
@@ -67,15 +68,22 @@ function popToList() {
   redraw();
 }
 
-let messageReady = false;
+const msgQueue = [];
+let msgBusy = false;
+
+function flushQueue() {
+  if (msgBusy || msgQueue.length === 0) return;
+  msgBusy = true;
+  message.write(msgQueue.shift());
+}
 
 function sendCommand(command, animeId, value) {
-  if (!messageReady) return;
   const msg = new Map();
   msg.set("COMMAND", command);
   if (animeId !== undefined) msg.set("ANIME_ID", animeId);
   if (value !== undefined) msg.set("VALUE", value);
-  message.write(msg);
+  msgQueue.push(msg);
+  flushQueue();
 }
 
 const actions = { pushScreen, popScreen, popToList, sendCommand, redraw, _poco: poco, _colors: colors };
@@ -101,7 +109,7 @@ const message = new Message({
     if (status === 2) {
       state.error = "Login required";
       state.loading = false;
-      popToList();
+      redraw();
       return;
     }
 
@@ -135,10 +143,13 @@ const message = new Message({
     }
   },
   onWritable() {
-    messageReady = true;
-    sendCommand(0);
-    state.loading = true;
-    redraw();
+    msgBusy = false;
+    flushQueue();
+    if (!state.animeList.length && !state.error) {
+      sendCommand(0);
+      state.loading = true;
+      redraw();
+    }
   },
 });
 

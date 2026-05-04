@@ -1,10 +1,6 @@
 const SELECTED_HEIGHT = 64;
 const ROW_HEIGHT = 44;
 const PADDING = 10;
-const ANIM_DURATION = 250;
-const BOUNCE = 8;
-
-let animState = null;
 let cachedColors = null;
 
 function initColors(poco, colors) {
@@ -24,27 +20,10 @@ function initColors(poco, colors) {
   return cachedColors;
 }
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
-
-function wobble(fraction, from, overshoot) {
-  const f = Math.quadEaseOut(fraction) * 4;
-  if (f < 3) return lerp(from, overshoot, f / 3);
-  return lerp(overshoot, 0, f - 3);
-}
-
-function ease(fraction, from) {
-  return Math.round(from * (1 - Math.quadEaseOut(fraction)));
-}
 
 export function render(poco, state, colors) {
   const c = initColors(poco, colors);
   invalidateCache(state);
-  renderFrame(poco, state, c, 0, 0);
-}
-
-function renderFrame(poco, state, c, textOffset, highlightOffset) {
   poco.begin();
 
   if (state.animeList.length === 0) {
@@ -67,8 +46,8 @@ function renderFrame(poco, state, c, textOffset, highlightOffset) {
   const sel = state.selectedIndex;
   const cy = ((poco.height - SELECTED_HEIGHT) >> 1);
 
-  const textY = cy + textOffset;
-  const hlY = cy + highlightOffset;
+  const textY = cy;
+  const hlY = cy;
 
   // Above rows (positioned by text offset)
   let aboveCount = 0;
@@ -160,67 +139,25 @@ function invalidateCache(state) {
   }
 }
 
-let animTimer = null;
-let _poco = null;
-let _colors = null;
-
-function startAnim(direction, poco, state, colors) {
-  const shift = direction > 0 ? ROW_HEIGHT : -ROW_HEIGHT;
-  const bounce = direction > 0 ? -BOUNCE : BOUNCE;
-  const c = initColors(poco, colors);
-
-  animState = {
-    startTime: Date.now(),
-    fromOffset: shift,
-    overshoot: bounce,
-  };
-
-  if (animTimer) clearInterval(animTimer);
-  animTimer = setInterval(() => {
-    if (!animState) {
-      clearInterval(animTimer);
-      animTimer = null;
-      render(poco, state, colors);
-      return;
-    }
-    const elapsed = Date.now() - animState.startTime;
-    const progress = Math.min(1, elapsed / ANIM_DURATION);
-
-    const offset = Math.round(animState.fromOffset * (1 - Math.quadEaseOut(progress)));
-    renderFrame(poco, state, c, offset, offset);
-
-    if (progress >= 1) animState = null;
-  }, 33);
-}
-
 export function handleButton(type, event, state, actions) {
   if (event !== "press" && event !== "double" && event !== "long") return;
 
   const list = state.animeList;
   if (list.length === 0) return;
 
-  if (!_poco || !_colors) {
-    _poco = actions._poco;
-    _colors = actions._colors;
-  }
-
   if (type === "up" && event === "press") {
     if (state.selectedIndex > 0) {
       state.selectedIndex--;
-      if (_poco) startAnim(-1, _poco, state, _colors);
-      else actions.redraw();
+      actions.redraw();
     }
   } else if (type === "down" && event === "press") {
     if (state.selectedIndex < list.length - 1) {
       state.selectedIndex++;
-      if (_poco) startAnim(1, _poco, state, _colors);
-      else actions.redraw();
+      actions.redraw();
     }
   } else if (type === "select" && event === "press") {
-    if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
     actions.pushScreen("editMenu", { anime: list[state.selectedIndex] });
   } else if (type === "select" && (event === "double" || event === "long")) {
-    if (animTimer) { clearInterval(animTimer); animTimer = null; animState = null; }
     const anime = list[state.selectedIndex];
     if (anime.total > 0 && anime.ep + 1 >= anime.total) {
       actions.pushScreen("confirm", { anime });
