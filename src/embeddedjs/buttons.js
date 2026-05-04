@@ -16,15 +16,22 @@ class ButtonManager {
     this._holdTimers = {};
     this._lastPress = {};
     this._captureBack = false;
+    this._initButton();
+  }
 
+  _initButton() {
+    const types = ["select", "up", "down"];
+    if (this._captureBack) types.push("back");
     new Button({
-      types: ["select", "up", "down", "back"],
+      types,
       onPush: (down, type) => this._onPush(down, type),
     });
   }
 
   setCaptureBack(capture) {
+    if (this._captureBack === capture) return;
     this._captureBack = capture;
+    this._initButton();
   }
 
   _onPush(down, type) {
@@ -34,7 +41,7 @@ class ButtonManager {
     }
 
     if (type === "back") {
-      if (this._captureBack && down) this._callback("back", "press");
+      if (down) this._callback("back", "press");
       return;
     }
 

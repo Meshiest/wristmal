@@ -69,12 +69,15 @@ function popToList() {
 }
 
 const msgQueue = [];
-let msgBusy = false;
 
-function flushQueue() {
-  if (msgBusy || msgQueue.length === 0) return;
-  msgBusy = true;
-  message.write(msgQueue.shift());
+function tryFlush() {
+  if (msgQueue.length === 0) return;
+  try {
+    message.write(msgQueue[0]);
+    msgQueue.shift();
+  } catch (e) {
+    // not writable yet, will retry on next onWritable
+  }
 }
 
 function sendCommand(command, animeId, value) {
@@ -83,7 +86,7 @@ function sendCommand(command, animeId, value) {
   if (animeId !== undefined) msg.set("ANIME_ID", animeId);
   if (value !== undefined) msg.set("VALUE", value);
   msgQueue.push(msg);
-  flushQueue();
+  tryFlush();
 }
 
 const actions = { pushScreen, popScreen, popToList, sendCommand, redraw, _poco: poco, _colors: colors };
@@ -143,8 +146,7 @@ const message = new Message({
     }
   },
   onWritable() {
-    msgBusy = false;
-    flushQueue();
+    tryFlush();
     if (!state.animeList.length && !state.error) {
       sendCommand(0);
       state.loading = true;
