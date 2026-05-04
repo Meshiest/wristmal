@@ -11,27 +11,20 @@ class ButtonManager {
     this._callback = callback;
     this._selectCount = 0;
     this._selectTimer = null;
-    this._selectDownTime = 0;
     this._selectHeld = false;
+    this._longPressTimer = null;
     this._holdTimers = {};
     this._lastPress = {};
     this._captureBack = false;
-    this._createButton();
+
+    new Button({
+      types: ["select", "up", "down", "back"],
+      onPush: (down, type) => this._onPush(down, type),
+    });
   }
 
   setCaptureBack(capture) {
-    if (this._captureBack === capture) return;
     this._captureBack = capture;
-    this._createButton();
-  }
-
-  _createButton() {
-    const types = ["select", "up", "down"];
-    if (this._captureBack) types.push("back");
-    new Button({
-      types,
-      onPush: (down, type) => this._onPush(down, type),
-    });
   }
 
   _onPush(down, type) {
@@ -41,7 +34,7 @@ class ButtonManager {
     }
 
     if (type === "back") {
-      if (down) this._callback("back", "press");
+      if (this._captureBack && down) this._callback("back", "press");
       return;
     }
 
@@ -89,9 +82,7 @@ class ButtonManager {
       }, LONG_PRESS_THRESHOLD);
     } else {
       clearTimeout(this._longPressTimer);
-      if (this._selectHeld) {
-        this._selectHeld = false;
-      }
+      this._selectHeld = false;
     }
   }
 }

@@ -89,7 +89,7 @@ function renderFrame(poco, state, c, textOffset, highlightOffset) {
 
   // Selected row: highlight uses hlY, text uses textY
   poco.fillRectangle(c.highlight, 0, hlY, poco.width, SELECTED_HEIGHT);
-  drawSelectedRow(poco, list[sel], inset, textY, contentWidth, c);
+  drawSelectedRow(poco, list[sel], inset, textY, contentWidth, c, state.updating);
 
   // Below rows (positioned by text offset)
   let y = textY + SELECTED_HEIGHT;
@@ -105,10 +105,17 @@ function renderFrame(poco, state, c, textOffset, highlightOffset) {
   poco.end();
 }
 
-function drawSelectedRow(poco, anime, x, y, w, c) {
+function drawSelectedRow(poco, anime, x, y, w, c, updating) {
   const maxW = w - PADDING * 2;
   const title = truncate(poco, anime.t, c.font, maxW, "s" + anime.id);
   poco.drawText(title, c.font, c.white, x + PADDING, y + 6);
+
+  if (updating) {
+    const updStr = "Updating...";
+    const updW = poco.getTextWidth(updStr, c.fontSmall);
+    poco.drawText(updStr, c.fontSmall, c.gray, x + ((w - updW) >> 1), y + 6 + c.font.height + 4);
+    return;
+  }
 
   const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
   const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
@@ -219,6 +226,7 @@ export function handleButton(type, event, state, actions) {
       actions.pushScreen("confirm", { anime });
     } else {
       anime.ep++;
+      state.updating = true;
       actions.redraw();
       actions.sendCommand(1, anime.id);
     }
