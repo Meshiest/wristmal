@@ -16,6 +16,7 @@
            cursor: pointer; margin-top: 16px; }
   .btn-login { background: #2e86de; color: #fff; }
   .status { text-align: center; padding: 12px; color: #10ac84; }
+  #debug { font-size: 10px; color: #666; word-break: break-all; margin-top: 20px; }
 </style>
 </head>
 <body>
@@ -35,16 +36,27 @@
 </div>
 
 <div id="callback" class="card" style="display:none;">
-  <div class="status">Completing login...</div>
+  <div class="status" id="callbackStatus">Completing login...</div>
 </div>
 
+<div id="debug"></div>
+
 <script>
+function log(msg) {
+  document.getElementById('debug').innerHTML += msg + '<br>';
+}
+
 var params = new URLSearchParams(location.search);
 var clientId = params.get('client_id') || '';
 var isLoggedIn = params.get('logged_in') === '1';
 var authCode = params.get('code');
 
-document.getElementById('clientId').value = clientId;
+log('clientId from URL: ' + (clientId ? 'yes' : 'no'));
+log('authCode: ' + (authCode ? 'yes' : 'no'));
+log('localStorage client_id: ' + (localStorage.getItem('wristmal_client_id') || 'none'));
+log('localStorage code_verifier: ' + (localStorage.getItem('wristmal_code_verifier') ? 'yes' : 'no'));
+
+document.getElementById('clientId').value = clientId || localStorage.getItem('wristmal_client_id') || '';
 
 if (authCode) {
   document.getElementById('setup').style.display = 'none';
@@ -60,13 +72,15 @@ function saveAndLogin() {
   var clientSecret = document.getElementById('clientSecret').value.trim();
   if (!clientId) { alert('Client ID is required'); return; }
 
-  sessionStorage.setItem('client_id', clientId);
-  sessionStorage.setItem('client_secret', clientSecret);
+  localStorage.setItem('wristmal_client_id', clientId);
+  localStorage.setItem('wristmal_client_secret', clientSecret);
 
   var codeVerifier = generateCodeVerifier();
-  sessionStorage.setItem('code_verifier', codeVerifier);
+  localStorage.setItem('wristmal_code_verifier', codeVerifier);
 
   var redirectUri = location.origin + location.pathname;
+  localStorage.setItem('wristmal_redirect_uri', redirectUri);
+
   var url = 'https://myanimelist.net/v1/oauth2/authorize' +
     '?response_type=code' +
     '&client_id=' + encodeURIComponent(clientId) +
@@ -77,18 +91,32 @@ function saveAndLogin() {
 }
 
 function returnAuthCode(code) {
-  var codeVerifier = sessionStorage.getItem('code_verifier') || '';
-  var clientSecret = sessionStorage.getItem('client_secret') || '';
-  clientId = sessionStorage.getItem('client_id') || clientId;
-  var redirectUri = location.origin + location.pathname;
+  var codeVerifier = localStorage.getItem('wristmal_code_verifier') || '';
+  var clientSecret = localStorage.getItem('wristmal_client_secret') || '';
+  clientId = localStorage.getItem('wristmal_client_id') || clientId;
+  var redirectUri = localStorage.getItem('wristmal_redirect_uri') || location.origin + location.pathname;
 
-  closeConfig({
+  log('returning auth code to pkjs');
+  log('have code_verifier: ' + (codeVerifier ? 'yes' : 'NO'));
+  log('have client_id: ' + (clientId ? 'yes' : 'NO'));
+
+  var data = {
     client_id: clientId,
     client_secret: clientSecret,
     auth_code: code,
     code_verifier: codeVerifier,
     redirect_uri: redirectUri,
-  });
+  };
+
+  log('closing config with: ' + JSON.stringify(data).substring(0, 100));
+
+  localStorage.removeItem('wristmal_code_verifier');
+  localStorage.removeItem('wristmal_client_secret');
+  localStorage.removeItem('wristmal_redirect_uri');
+
+  setTimeout(function() {
+    closeConfig(data);
+  }, 500);
 }
 
 function generateCodeVerifier() {

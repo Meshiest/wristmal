@@ -315,9 +315,11 @@ Pebble.addEventListener('showConfiguration', function () {
 });
 
 Pebble.addEventListener('webviewclosed', function (e) {
+  console.log('webviewclosed fired, response: ' + (e.response ? e.response.substring(0, 200) : 'EMPTY'));
   if (!e.response) return;
   try {
     var data = JSON.parse(decodeURIComponent(e.response));
+    console.log('parsed config data, keys: ' + Object.keys(data).join(', '));
     if (data.client_id) localStorage.setItem(CLIENT_ID_KEY, data.client_id);
     if (data.client_secret) localStorage.setItem(CLIENT_SECRET_KEY, data.client_secret);
 
