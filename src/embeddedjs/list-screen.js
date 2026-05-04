@@ -36,6 +36,7 @@ function wobble(fraction, from, to, overshoot) {
 
 export function render(poco, state, colors) {
   const c = initColors(poco, colors);
+  invalidateCache(state);
   poco.begin();
   poco.fillRectangle(c.black, 0, 0, poco.width, poco.height);
 
@@ -89,7 +90,7 @@ export function render(poco, state, colors) {
 
 function drawSelectedRow(poco, anime, x, y, w, c) {
   const maxW = w - PADDING * 2;
-  const title = truncate(poco, anime.t, c.font, maxW);
+  const title = truncate(poco, anime.t, c.font, maxW, "s" + anime.id);
   poco.drawText(title, c.font, c.white, x + PADDING, y + 6);
 
   const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
@@ -103,7 +104,7 @@ function drawSelectedRow(poco, anime, x, y, w, c) {
 }
 
 function drawUnselectedRow(poco, anime, x, y, w, c) {
-  const title = truncate(poco, anime.t, c.fontSmall, w - PADDING * 2);
+  const title = truncate(poco, anime.t, c.fontSmall, w - PADDING * 2, "u" + anime.id);
   poco.drawText(title, c.fontSmall, c.dimTitle, x + PADDING, y + 4);
 
   const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
@@ -111,12 +112,28 @@ function drawUnselectedRow(poco, anime, x, y, w, c) {
   poco.drawText(ep, c.fontSmall, c.darkGray, x + w - epW - PADDING, y + 4 + c.fontSmall.height + 1);
 }
 
-function truncate(poco, text, font, maxWidth) {
-  if (poco.getTextWidth(text, font) <= maxWidth) return text;
-  while (text.length > 1 && poco.getTextWidth(text + "…", font) > maxWidth) {
-    text = text.slice(0, -1);
+let titleCache = new Map();
+let lastListLen = -1;
+
+function truncate(poco, text, font, maxWidth, cacheKey) {
+  const key = cacheKey || text + maxWidth;
+  if (titleCache.has(key)) return titleCache.get(key);
+  let result = text;
+  if (poco.getTextWidth(text, font) > maxWidth) {
+    while (result.length > 1 && poco.getTextWidth(result + "…", font) > maxWidth) {
+      result = result.slice(0, -1);
+    }
+    result = result + "…";
   }
-  return text + "…";
+  titleCache.set(key, result);
+  return result;
+}
+
+function invalidateCache(state) {
+  if (state.animeList.length !== lastListLen) {
+    titleCache = new Map();
+    lastListLen = state.animeList.length;
+  }
 }
 
 let animTimer = null;
