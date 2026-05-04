@@ -28,15 +28,23 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function wobble(fraction, from, to, overshoot) {
+function wobble(fraction, from, overshoot) {
   const f = Math.quadEaseOut(fraction) * 4;
   if (f < 3) return lerp(from, overshoot, f / 3);
-  return lerp(overshoot, to, f - 3);
+  return lerp(overshoot, 0, f - 3);
+}
+
+function ease(fraction, from) {
+  return Math.round(from * (1 - Math.quadEaseOut(fraction)));
 }
 
 export function render(poco, state, colors) {
   const c = initColors(poco, colors);
   invalidateCache(state);
+  renderFrame(poco, state, c, 0, 0);
+}
+
+function renderFrame(poco, state, c, textOffset, highlightOffset) {
   poco.begin();
 
   if (state.animeList.length === 0) {
@@ -57,52 +65,40 @@ export function render(poco, state, colors) {
   const contentWidth = poco.width - inset * 2;
   const list = state.animeList;
   const sel = state.selectedIndex;
+  const cy = ((poco.height - SELECTED_HEIGHT) >> 1);
 
-  const restCenterY = (poco.height - SELECTED_HEIGHT) >> 1;
-  let offsetY = 0;
+  const textY = cy + textOffset;
+  const hlY = cy + highlightOffset;
 
-  if (animState) {
-    const elapsed = Date.now() - animState.startTime;
-    const progress = Math.min(1, elapsed / ANIM_DURATION);
-    offsetY = wobble(progress, animState.fromOffset, 0, animState.overshoot);
-    if (progress >= 1) animState = null;
-  }
-
-  const centerY = restCenterY + Math.round(offsetY);
-
-  // Count how many rows fit above
+  // Above rows (positioned by text offset)
   let aboveCount = 0;
   for (let i = sel - 1; i >= 0; i--) {
-    const ry = centerY - (sel - i) * ROW_HEIGHT;
-    if (ry + ROW_HEIGHT <= 0) break;
+    if (textY - (sel - i) * ROW_HEIGHT + ROW_HEIGHT <= 0) break;
     aboveCount = sel - i;
   }
 
-  // Top black fill
-  const firstRowY = centerY - aboveCount * ROW_HEIGHT;
+  const firstRowY = textY - aboveCount * ROW_HEIGHT;
   if (firstRowY > 0)
     poco.fillRectangle(c.black, 0, 0, poco.width, firstRowY);
 
-  // Draw above rows top-to-bottom
   for (let n = aboveCount; n >= 1; n--) {
-    const ry = centerY - n * ROW_HEIGHT;
+    const ry = textY - n * ROW_HEIGHT;
     poco.fillRectangle(c.black, 0, ry, poco.width, ROW_HEIGHT);
     drawUnselectedRow(poco, list[sel - n], inset, ry, contentWidth, c);
   }
 
-  // Selected row
-  poco.fillRectangle(c.highlight, 0, centerY, poco.width, SELECTED_HEIGHT);
-  drawSelectedRow(poco, list[sel], inset, centerY, contentWidth, c);
+  // Selected row: highlight uses hlY, text uses textY
+  poco.fillRectangle(c.highlight, 0, hlY, poco.width, SELECTED_HEIGHT);
+  drawSelectedRow(poco, list[sel], inset, textY, contentWidth, c);
 
-  // Below rows
-  let y = centerY + SELECTED_HEIGHT;
+  // Below rows (positioned by text offset)
+  let y = textY + SELECTED_HEIGHT;
   for (let i = sel + 1; i < list.length && y < poco.height; i++) {
     poco.fillRectangle(c.black, 0, y, poco.width, ROW_HEIGHT);
     drawUnselectedRow(poco, list[i], inset, y, contentWidth, c);
     y += ROW_HEIGHT;
   }
 
-  // Bottom black fill
   if (y < poco.height)
     poco.fillRectangle(c.black, 0, y, poco.width, poco.height - y);
 
@@ -164,6 +160,7 @@ let _colors = null;
 function startAnim(direction, poco, state, colors) {
   const shift = direction > 0 ? ROW_HEIGHT : -ROW_HEIGHT;
   const bounce = direction > 0 ? -BOUNCE : BOUNCE;
+  const c = initColors(poco, colors);
 
   animState = {
     startTime: Date.now(),
@@ -173,11 +170,21 @@ function startAnim(direction, poco, state, colors) {
 
   if (animTimer) clearInterval(animTimer);
   animTimer = setInterval(() => {
-    render(poco, state, colors);
     if (!animState) {
       clearInterval(animTimer);
       animTimer = null;
+      render(poco, state, colors);
+      return;
     }
+    const elapsed = Date.now() - animState.startTime;
+    const progress = Math.min(1, elapsed / ANIM_DURATION);
+
+    const textOff = ease(progress, animState.fromOffset);
+    const hlOff = Math.round(wobble(progress, animState.fromOffset, animState.overshoot));
+
+    renderFrame(poco, state, c, textOff, hlOff);
+
+    if (progress >= 1) animState = null;
   }, 33);
 }
 
