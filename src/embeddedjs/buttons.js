@@ -10,9 +10,21 @@ class ButtonManager {
     this._selectCount = 0;
     this._selectTimer = null;
     this._holdTimers = {};
+    this._captureBack = false;
+    this._createButton();
+  }
 
+  setCaptureBack(capture) {
+    if (this._captureBack === capture) return;
+    this._captureBack = capture;
+    this._createButton();
+  }
+
+  _createButton() {
+    const types = ["select", "up", "down"];
+    if (this._captureBack) types.push("back");
     new Button({
-      types: ["select", "up", "down", "back"],
+      types,
       onPush: (down, type) => this._onPush(down, type),
     });
   }

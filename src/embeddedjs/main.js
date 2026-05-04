@@ -46,6 +46,7 @@ function pushScreen(name, params) {
   state.screenStack.push({ name: state.screen, params: state.screenParams });
   state.screen = name;
   state.screenParams = params || {};
+  buttonManager.setCaptureBack(true);
   redraw();
 }
 
@@ -54,6 +55,7 @@ function popScreen() {
   const prev = state.screenStack.pop();
   state.screen = prev.name;
   state.screenParams = prev.params;
+  if (state.screen === "list") buttonManager.setCaptureBack(false);
   redraw();
 }
 
@@ -61,6 +63,7 @@ function popToList() {
   state.screenStack = [];
   state.screen = "list";
   state.screenParams = {};
+  buttonManager.setCaptureBack(false);
   redraw();
 }
 
@@ -74,7 +77,7 @@ function sendCommand(command, animeId, value) {
 
 const actions = { pushScreen, popScreen, popToList, sendCommand, redraw };
 
-new ButtonManager((type, event) => {
+const buttonManager = new ButtonManager((type, event) => {
   const s = screens[state.screen];
   if (s) s.handleButton(type, event, state, actions);
 });
