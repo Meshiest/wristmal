@@ -75,7 +75,7 @@ function sendCommand(command, animeId, value) {
   if (message.writable) message.write(msg);
 }
 
-const actions = { pushScreen, popScreen, popToList, sendCommand, redraw };
+const actions = { pushScreen, popScreen, popToList, sendCommand, redraw, _poco: poco, _colors: colors };
 
 const buttonManager = new ButtonManager((type, event) => {
   const s = screens[state.screen];
