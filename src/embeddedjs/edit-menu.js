@@ -1,35 +1,34 @@
 const ROWS = ["score", "increment", "episodes"];
+const ROW_HEIGHT = 52;
+const PADDING = 10;
 
 let highlight = null;
+let subText = null;
+let selSub = null;
 
 export function render(poco, state, colors) {
   const { black, white, gray, darkGray, gold, font, fontSmall } = colors;
-  if (!highlight) highlight = poco.makeColor(0x00, 0x22, 0x44);
+  if (!highlight) highlight = poco.makeColor(0x55, 0xAA, 0xFF);
+  if (!subText) subText = poco.makeColor(0x55, 0x55, 0x55);
+  if (!selSub) selSub = poco.makeColor(0x00, 0x00, 0x55);
 
   const anime = state.screenParams.anime;
   const selectedRow = state.screenParams.menuIndex ?? 1;
 
   poco.begin();
+  poco.fillRectangle(white, 0, 0, poco.width, poco.height);
 
-  const inset = screen.round ? 20 : 0;
-  const contentWidth = poco.width - inset * 2;
-
-  const headerH = 36;
-  const ROW_HEIGHT = 48;
-  const startY = headerH + 12;
-  const PADDING = 12;
-
-  // Draw backgrounds without full-screen clear
-  poco.fillRectangle(black, 0, 0, poco.width, headerH);
-  poco.fillRectangle(white, inset, 0, contentWidth, headerH);
-
+  // Header
+  const headerH = 40;
   const epStr = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
   const header = `${anime.t} · ${epStr}`;
   const hw = poco.getTextWidth(header, fontSmall);
-  poco.drawText(header, fontSmall, black, (poco.width - hw) >> 1, 9);
+  poco.drawText(header, fontSmall, subText, (poco.width - hw) >> 1, 11);
 
-  // Fill gap between header and rows
-  poco.fillRectangle(black, 0, headerH, poco.width, startY - headerH);
+  // Separator line
+  poco.fillRectangle(poco.makeColor(0xCC, 0xCC, 0xCC), PADDING, headerH - 1, poco.width - PADDING * 2, 1);
+
+  const startY = headerH + 4;
 
   const rowData = [
     { label: "Edit Score", value: anime.score > 0 ? `★ ${anime.score}` : "★ -" },
@@ -40,21 +39,16 @@ export function render(poco, state, colors) {
   for (let i = 0; i < rowData.length; i++) {
     const y = startY + i * ROW_HEIGHT;
     const selected = i === selectedRow;
-    const bg = selected ? highlight : black;
-    const fg = selected ? white : gray;
+    const bg = selected ? highlight : white;
+    const fg = black;
+    const valColor = selected ? selSub : subText;
 
     poco.fillRectangle(bg, 0, y, poco.width, ROW_HEIGHT);
 
     const { label, value } = rowData[i];
-    poco.drawText(label, font, fg, inset + PADDING, y + 12);
-    const vw = poco.getTextWidth(value, font);
-    poco.drawText(value, font, fg, inset + contentWidth - vw - PADDING, y + 12);
-  }
-
-  // Fill remaining space below rows
-  const bottomY = startY + rowData.length * ROW_HEIGHT;
-  if (bottomY < poco.height) {
-    poco.fillRectangle(black, 0, bottomY, poco.width, poco.height - bottomY);
+    poco.drawText(label, font, fg, PADDING, y + 6);
+    const vw = poco.getTextWidth(value, fontSmall);
+    poco.drawText(value, fontSmall, valColor, poco.width - vw - PADDING, y + 10);
   }
 
   poco.end();
