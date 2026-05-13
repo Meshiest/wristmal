@@ -156,3 +156,7 @@ const message = new Message({
 });
 
 redraw();
+
+setInterval(() => {
+  if (state.screen === "list") redraw();
+}, 60000);
