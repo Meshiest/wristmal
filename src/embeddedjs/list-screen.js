@@ -31,26 +31,22 @@ function getTimeStr() {
   return `${h}:${m} ${ampm}`;
 }
 
-let batteryLevel = null;
+import Battery from "embedded:sensor/Battery";
 
-function initBattery() {
-  if (batteryLevel !== null) return;
-  try {
-    const Battery = device.sensor.Battery;
-    if (Battery) {
-      const bat = new Battery();
-      bat.start();
-      batteryLevel = bat.level || 0;
+let batteryPercent = -1;
+
+try {
+  const bat = new Battery({
+    onSample() {
+      const s = this.sample();
+      batteryPercent = s.percent;
     }
-  } catch (e) {
-    // Battery sensor not available
-  }
-}
+  });
+  batteryPercent = bat.sample().percent;
+} catch (e) {}
 
 function getBatteryStr() {
-  initBattery();
-  if (batteryLevel === null) return "";
-  return `${batteryLevel}%`;
+  return batteryPercent >= 0 ? `${batteryPercent}%` : "";
 }
 
 export function render(poco, state, colors) {
