@@ -1,6 +1,6 @@
 const SELECTED_HEIGHT = 72;
-const ROW_HEIGHT = 44;
-const STATUS_HEIGHT = 20;
+const ROW_HEIGHT = 28;
+const STATUS_HEIGHT = 28;
 const PADDING = 10;
 
 let cachedColors = null;
@@ -24,9 +24,19 @@ function initColors(poco, colors) {
 
 function getTimeStr() {
   const now = new Date();
-  const h = now.getHours();
+  let h = now.getHours();
+  const ampm = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
   const m = String(now.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
+  return `${h}:${m} ${ampm}`;
+}
+
+function getBatteryStr() {
+  try {
+    return `${watch.battery.level}%`;
+  } catch (e) {
+    return "";
+  }
 }
 
 export function render(poco, state, colors) {
@@ -34,12 +44,6 @@ export function render(poco, state, colors) {
   invalidateCache(state);
   poco.begin();
   poco.fillRectangle(c.white, 0, 0, poco.width, poco.height);
-
-  // Status bar
-  const timeStr = getTimeStr();
-  const tw = poco.getTextWidth(timeStr, c.fontSmall);
-  poco.drawText(timeStr, c.fontSmall, c.statusText, poco.width - tw - PADDING, 1);
-  poco.fillRectangle(c.statusLine, 0, STATUS_HEIGHT - 1, poco.width, 1);
 
   if (state.animeList.length === 0) {
     const msg = state.loading ? "Loading..." : "No shows watching";
@@ -82,6 +86,17 @@ export function render(poco, state, colors) {
     y += ROW_HEIGHT;
   }
 
+  // Status bar (drawn last, on top of rows)
+  poco.fillRectangle(c.white, 0, 0, poco.width, STATUS_HEIGHT);
+  const battStr = getBatteryStr();
+  if (battStr) {
+    poco.drawText(battStr, c.fontSmall, c.black, PADDING, 4);
+  }
+  const timeStr = getTimeStr();
+  const tw = poco.getTextWidth(timeStr, c.fontSmall);
+  poco.drawText(timeStr, c.fontSmall, c.black, poco.width - tw - PADDING, 4);
+  poco.fillRectangle(c.statusLine, 0, STATUS_HEIGHT - 1, poco.width, 1);
+
   poco.end();
 }
 
@@ -108,12 +123,13 @@ function drawSelectedRow(poco, anime, y, updating, c) {
 }
 
 function drawSmallRow(poco, anime, y, c) {
-  const title = truncate(poco, anime.t, c.fontSmall, poco.width - PADDING * 2, "u" + anime.id);
-  poco.drawText(title, c.fontSmall, c.black, PADDING, y + 4);
-
   const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
   const epW = poco.getTextWidth(ep, c.fontSmall);
-  poco.drawText(ep, c.fontSmall, c.subText, poco.width - epW - PADDING, y + 4 + c.fontSmall.height + 1);
+  const titleMax = poco.width - epW - PADDING * 3;
+  const title = truncate(poco, anime.t, c.fontSmall, titleMax, "u" + anime.id);
+
+  poco.drawText(title, c.fontSmall, c.black, PADDING, y + 4);
+  poco.drawText(ep, c.fontSmall, c.black, poco.width - epW - PADDING, y + 4);
 }
 
 let titleCache = new Map();
