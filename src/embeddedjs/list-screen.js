@@ -17,7 +17,7 @@ function initColors(poco, colors) {
     subText: poco.makeColor(0x55, 0x55, 0x55),
     selSub: poco.makeColor(0x00, 0x00, 0x55),
     statusText: poco.makeColor(0x55, 0x55, 0x55),
-    statusLine: poco.makeColor(0xCC, 0xCC, 0xCC),
+    statusLine: poco.makeColor(0x55, 0x55, 0x55),
   };
   return cachedColors;
 }
@@ -31,12 +31,26 @@ function getTimeStr() {
   return `${h}:${m} ${ampm}`;
 }
 
-function getBatteryStr() {
+let batteryLevel = null;
+
+function initBattery() {
+  if (batteryLevel !== null) return;
   try {
-    return `${watch.battery.level}%`;
+    const Battery = device.sensor.Battery;
+    if (Battery) {
+      const bat = new Battery();
+      bat.start();
+      batteryLevel = bat.level || 0;
+    }
   } catch (e) {
-    return "";
+    // Battery sensor not available
   }
+}
+
+function getBatteryStr() {
+  initBattery();
+  if (batteryLevel === null) return "";
+  return `${batteryLevel}%`;
 }
 
 export function render(poco, state, colors) {
