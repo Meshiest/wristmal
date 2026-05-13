@@ -1,4 +1,6 @@
-const ROW_HEIGHT = 61;
+const SELECTED_HEIGHT = 72;
+const ROW_HEIGHT = 44;
+const STATUS_HEIGHT = 20;
 const PADDING = 10;
 
 let cachedColors = null;
@@ -14,17 +16,32 @@ function initColors(poco, colors) {
     highlight: poco.makeColor(0x55, 0xAA, 0xFF),
     subText: poco.makeColor(0x55, 0x55, 0x55),
     selSub: poco.makeColor(0x00, 0x00, 0x55),
+    statusText: poco.makeColor(0x55, 0x55, 0x55),
+    statusLine: poco.makeColor(0xCC, 0xCC, 0xCC),
   };
   return cachedColors;
+}
+
+function getTimeStr() {
+  const now = new Date();
+  const h = now.getHours();
+  const m = String(now.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 export function render(poco, state, colors) {
   const c = initColors(poco, colors);
   invalidateCache(state);
   poco.begin();
+  poco.fillRectangle(c.white, 0, 0, poco.width, poco.height);
+
+  // Status bar
+  const timeStr = getTimeStr();
+  const tw = poco.getTextWidth(timeStr, c.fontSmall);
+  poco.drawText(timeStr, c.fontSmall, c.statusText, poco.width - tw - PADDING, 1);
+  poco.fillRectangle(c.statusLine, 0, STATUS_HEIGHT - 1, poco.width, 1);
 
   if (state.animeList.length === 0) {
-    poco.fillRectangle(c.white, 0, 0, poco.width, poco.height);
     const msg = state.loading ? "Loading..." : "No shows watching";
     const w = poco.getTextWidth(msg, c.font);
     poco.drawText(msg, c.font, c.subText, (poco.width - w) >> 1, (poco.height - c.font.height) >> 1);
@@ -37,54 +54,66 @@ export function render(poco, state, colors) {
     return;
   }
 
-  poco.fillRectangle(c.white, 0, 0, poco.width, poco.height);
-
   const list = state.animeList;
   const sel = state.selectedIndex;
+  const contentTop = STATUS_HEIGHT;
+  const contentHeight = poco.height - contentTop;
 
-  const maxVisible = Math.floor(poco.height / ROW_HEIGHT);
-  let scrollOffset = state.listScrollOffset || 0;
-  if (sel < scrollOffset) scrollOffset = sel;
-  if (sel >= scrollOffset + maxVisible) scrollOffset = sel - maxVisible + 1;
-  state.listScrollOffset = scrollOffset;
+  // Selected row is always vertically centered
+  const centerY = contentTop + ((contentHeight - SELECTED_HEIGHT) >> 1);
 
-  for (let i = 0; i < maxVisible + 1 && (i + scrollOffset) < list.length; i++) {
-    const dataIndex = i + scrollOffset;
-    const anime = list[dataIndex];
-    const y = i * ROW_HEIGHT;
-    const selected = dataIndex === sel;
+  // Draw unselected rows above
+  let y = centerY - ROW_HEIGHT;
+  for (let i = sel - 1; i >= 0 && y + ROW_HEIGHT > contentTop; i--) {
+    poco.fillRectangle(c.white, 0, y, poco.width, ROW_HEIGHT);
+    drawSmallRow(poco, list[i], y, c);
+    y -= ROW_HEIGHT;
+  }
 
-    const bg = selected ? c.highlight : c.white;
-    const titleColor = c.black;
-    const subColor = selected ? c.selSub : c.subText;
-    const scoreColor = selected ? c.selSub : c.subText;
+  // Selected row (larger)
+  poco.fillRectangle(c.highlight, 0, centerY, poco.width, SELECTED_HEIGHT);
+  drawSelectedRow(poco, list[sel], centerY, state.updating, c);
 
-    poco.fillRectangle(bg, 0, y, poco.width, ROW_HEIGHT);
-
-    // Title
-    const title = truncate(poco, anime.t, c.font, poco.width - PADDING * 2,
-      (selected ? "s" : "u") + anime.id);
-    poco.drawText(title, c.font, titleColor, PADDING, y + 4);
-
-    // Score (large font) left, episodes (large font) right
-    const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
-    const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
-
-    if (scoreStr) {
-      poco.drawText(scoreStr, c.font, scoreColor, PADDING, y + 4 + c.font.height);
-    }
-    const epW = poco.getTextWidth(ep, c.font);
-    poco.drawText(ep, c.font, subColor, poco.width - epW - PADDING, y + 4 + c.font.height);
-
-    if (state.updating && selected) {
-      const updStr = "Updating...";
-      const updW = poco.getTextWidth(updStr, c.fontSmall);
-      poco.drawText(updStr, c.fontSmall, subColor,
-        (poco.width - updW) >> 1, y + 8 + c.font.height);
-    }
+  // Draw unselected rows below
+  y = centerY + SELECTED_HEIGHT;
+  for (let i = sel + 1; i < list.length && y < poco.height; i++) {
+    poco.fillRectangle(c.white, 0, y, poco.width, ROW_HEIGHT);
+    drawSmallRow(poco, list[i], y, c);
+    y += ROW_HEIGHT;
   }
 
   poco.end();
+}
+
+function drawSelectedRow(poco, anime, y, updating, c) {
+  const title = truncate(poco, anime.t, c.font, poco.width - PADDING * 2, "s" + anime.id);
+  poco.drawText(title, c.font, c.black, PADDING, y + 6);
+
+  const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
+  const scoreStr = anime.score > 0 ? `★ ${anime.score}` : "";
+
+  if (updating) {
+    const updStr = "Updating...";
+    const updW = poco.getTextWidth(updStr, c.fontSmall);
+    poco.drawText(updStr, c.fontSmall, c.selSub,
+      poco.width - updW - PADDING, y + 8 + c.font.height);
+  } else {
+    const epW = poco.getTextWidth(ep, c.font);
+    poco.drawText(ep, c.font, c.selSub, poco.width - epW - PADDING, y + 6 + c.font.height);
+  }
+
+  if (scoreStr) {
+    poco.drawText(scoreStr, c.font, c.selSub, PADDING, y + 6 + c.font.height);
+  }
+}
+
+function drawSmallRow(poco, anime, y, c) {
+  const title = truncate(poco, anime.t, c.fontSmall, poco.width - PADDING * 2, "u" + anime.id);
+  poco.drawText(title, c.fontSmall, c.black, PADDING, y + 4);
+
+  const ep = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
+  const epW = poco.getTextWidth(ep, c.fontSmall);
+  poco.drawText(ep, c.fontSmall, c.subText, poco.width - epW - PADDING, y + 4 + c.fontSmall.height + 1);
 }
 
 let titleCache = new Map();
@@ -94,10 +123,10 @@ function truncate(poco, text, font, maxWidth, cacheKey) {
   if (titleCache.has(cacheKey)) return titleCache.get(cacheKey);
   let result = text;
   if (poco.getTextWidth(text, font) > maxWidth) {
-    while (result.length > 1 && poco.getTextWidth(result + "…", font) > maxWidth) {
+    while (result.length > 1 && poco.getTextWidth(result + "..", font) > maxWidth) {
       result = result.slice(0, -1);
     }
-    result = result + "…";
+    result = result + "..";
   }
   titleCache.set(cacheKey, result);
   return result;

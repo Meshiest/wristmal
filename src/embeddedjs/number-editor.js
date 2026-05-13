@@ -3,30 +3,29 @@ export function render(poco, state, colors) {
   const params = state.screenParams;
   const value = params.value;
   const label = params.label;
-  const color = params.field === "score" ? gold : blue;
 
   poco.begin();
   poco.fillRectangle(white, 0, 0, poco.width, poco.height);
 
   const labelW = poco.getTextWidth(label, fontSmall);
-  poco.drawText(label, fontSmall, gray, (poco.width - labelW) >> 1, 40);
+  poco.drawText(label, fontSmall, black, (poco.width - labelW) >> 1, 40);
 
-  const upHint = "▲";
+  const upHint = "UP";
   const upW = poco.getTextWidth(upHint, fontSmall);
-  poco.drawText(upHint, fontSmall, darkGray, (poco.width - upW) >> 1, 70);
+  poco.drawText(upHint, fontSmall, black, (poco.width - upW) >> 1, 70);
 
   const valueStr = String(value);
   const valueW = poco.getTextWidth(valueStr, fontLarge);
-  poco.drawText(valueStr, fontLarge, color, (poco.width - valueW) >> 1, 90);
+  poco.drawText(valueStr, fontLarge, black, (poco.width - valueW) >> 1, 90);
 
-  const downHint = "▼";
+  const downHint = "DOWN";
   const downW = poco.getTextWidth(downHint, fontSmall);
-  poco.drawText(downHint, fontSmall, darkGray, (poco.width - downW) >> 1, 140);
+  poco.drawText(downHint, fontSmall, black, (poco.width - downW) >> 1, 140);
 
   const max = params.max;
-  const rangeStr = max < 9999 ? `0 – ${max}` : "0 – ?";
+  const rangeStr = max < 9999 ? `0 - ${max}` : "0 - ?";
   const rangeW = poco.getTextWidth(rangeStr, fontSmall);
-  poco.drawText(rangeStr, fontSmall, darkGray, (poco.width - rangeW) >> 1, 180);
+  poco.drawText(rangeStr, fontSmall, black, (poco.width - rangeW) >> 1, 180);
 
   poco.end();
 }

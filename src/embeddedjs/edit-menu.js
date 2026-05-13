@@ -23,7 +23,7 @@ export function render(poco, state, colors) {
   const epStr = anime.total > 0 ? `${anime.ep}/${anime.total}` : `${anime.ep}/?`;
   const header = `${anime.t} · ${epStr}`;
   const hw = poco.getTextWidth(header, fontSmall);
-  poco.drawText(header, fontSmall, subText, (poco.width - hw) >> 1, 11);
+  poco.drawText(header, fontSmall, black, (poco.width - hw) >> 1, 11);
 
   // Separator line
   poco.fillRectangle(poco.makeColor(0xCC, 0xCC, 0xCC), PADDING, headerH - 1, poco.width - PADDING * 2, 1);
@@ -32,7 +32,7 @@ export function render(poco, state, colors) {
 
   const rowData = [
     { label: "Edit Score", value: anime.score > 0 ? `★ ${anime.score}` : "★ -" },
-    { label: "+ Increment", value: `→ ${anime.ep + 1}` },
+    { label: "+ Increment", value: `> ${anime.ep + 1}` },
     { label: "Edit Episodes", value: epStr },
   ];
 
@@ -41,14 +41,12 @@ export function render(poco, state, colors) {
     const selected = i === selectedRow;
     const bg = selected ? highlight : white;
     const fg = black;
-    const valColor = selected ? selSub : subText;
-
     poco.fillRectangle(bg, 0, y, poco.width, ROW_HEIGHT);
 
     const { label, value } = rowData[i];
     poco.drawText(label, font, fg, PADDING, y + 6);
     const vw = poco.getTextWidth(value, fontSmall);
-    poco.drawText(value, fontSmall, valColor, poco.width - vw - PADDING, y + 10);
+    poco.drawText(value, fontSmall, black, poco.width - vw - PADDING, y + 10);
   }
 
   poco.end();
@@ -86,6 +84,7 @@ export function handleButton(type, event, state, actions) {
         actions.pushScreen("confirm", { anime });
       } else {
         anime.ep++;
+        state.updating = true;
         actions.sendCommand(1, anime.id);
         actions.popToList();
       }

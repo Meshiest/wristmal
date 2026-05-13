@@ -21,8 +21,8 @@ export function render(poco, state, colors) {
   const dw = poco.getTextWidth(dateStr, fontSmall);
   poco.drawText(dateStr, fontSmall, gray, (poco.width - dw) >> 1, 130);
 
-  const hint1 = "● Confirm";
-  const hint2 = "◀ Cancel";
+  const hint1 = "SELECT = Confirm";
+  const hint2 = "BACK = Cancel";
   const h1w = poco.getTextWidth(hint1, fontSmall);
   const h2w = poco.getTextWidth(hint2, fontSmall);
   poco.drawText(hint1, fontSmall, darkGray, (poco.width - h1w) >> 1, 175);
